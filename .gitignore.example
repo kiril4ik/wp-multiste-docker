@@ -1,0 +1,15 @@
+# Local Docker environment and project configuration.
+/.dockerignore
+/.env
+/.env.example
+/Dockerfile
+/compose.yaml
+/docker/
+
+# Local database dumps and setup documentation.
+/db-dump/
+/README.docker.md
+/docs/superpowers/plans/2026-10-07-local-wordpress.md
+
+# This ignore template.
+/.gitignore.example

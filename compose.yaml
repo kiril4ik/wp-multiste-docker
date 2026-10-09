@@ -1,0 +1,62 @@
+services:
+  wordpress:
+    image: multisite-wordpress:local
+    build: .
+    ports:
+      - "127.0.0.1:8777:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wordpress_local}
+      WP_TABLE_PREFIX: ${WP_TABLE_PREFIX:-}
+      MAKE_REPALCE: ${MAKE_REPALCE:-true}
+      PROD_DOMAIN: ${PROD_DOMAIN:-}
+      IS_MULTISTE: ${IS_MULTISTE:-true}
+      DISABLE_MAIL: ${DISABLE_MAIL:-true}
+      WP_LOCAL_DOMAIN: localhost:8777
+      WP_CLI_CONFIG_PATH: /dev/null
+    volumes:
+      - .:/var/www/html
+      # Read the original wp-config.php for its table prefix and network settings.
+      - .:/workspace:ro
+      # Override only the container's configuration; preserve the host file.
+      - ./docker/wp-config.php:/var/www/html/wp-config.php:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl --fail --silent --show-error --max-time 5
+          --header "Host: $${WP_LOCAL_DOMAIN}"
+          http://127.0.0.1/wp-login.php --output /dev/null
+      interval: 5s
+      timeout: 6s
+      retries: 12
+      start_period: 30m
+
+  db:
+    image: multisite-db:local
+    build:
+      context: .
+      dockerfile: docker/db.Dockerfile
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-wordpress}
+      MARIADB_USER: ${DB_USER:-wordpress}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-wordpress_local}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_local}
+    command: ["--max-allowed-packet=256M"]
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db-dump:/dumps:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 30m
+
+volumes:
+  db_data:
